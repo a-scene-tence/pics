@@ -54,8 +54,17 @@ npm run dev
 3. `NEXT_PUBLIC_SITE_URL` 을 배포 도메인으로 설정, Supabase Redirect URL에도 추가.
 4. Deploy.
 
+## 로그인 / 입장 (번거로움 최소화)
+가족(특히 어르신)이 매번 URL을 찾아 들어가고 다시 로그인하는 부담을 줄이기 위해:
+
+- **장기 세션**: 한 번 로그인하면 장기 유지(쿠키 400일 + refresh token 무기한). Supabase 설정에서 **session time-box를 켜지 마세요**(기본 꺼짐). → 사실상 재로그인 불필요.
+- **PWA 설치**: 로그인/갤러리 상단 배너로 "홈 화면에 추가" 유도. 설치 후 아이콘 탭으로 바로 진입.
+- **카카오/구글 간편 로그인**: Supabase 대시보드 → Authentication → Providers에서 Kakao/Google 활성화하고, Redirect URL에 `.../auth/callback` 등록. 카카오는 **이메일 제공 동의 항목**을 켜야 allow-list 매칭이 됩니다.
+- **가족 공용 PIN(선택, 읽기 전용)**: `.env`에 `FAMILY_PIN` + `PIN_COOKIE_SECRET`를 설정하면 `/enter`에서 PIN으로 보기 전용 입장이 활성화됩니다.
+  - ⚠️ 공용 PIN은 PIN+URL을 아는 누구나 전체 열람(읽기 전용) 가능합니다. 강한 PIN을 쓰고, 불필요하면 비워두세요(미설정 시 비활성).
+
 ## 멤버 초대
-관리자로 로그인 → 헤더 **멤버** → 이메일 초대. 초대된 이메일은 `/login`에서 매직링크로 로그인.
+관리자로 로그인 → 헤더 **멤버** → 이메일 초대. 초대된 이메일은 `/login`에서 매직링크 또는 카카오/구글로 로그인.
 
 ## 비용 (소규모 가족 기준)
 Vercel Hobby $0 · Supabase Free $0 · R2 첫 10GB 무료 후 저장 $0.015/GB·월, **조회 트래픽 무료**.

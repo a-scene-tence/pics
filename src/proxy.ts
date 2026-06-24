@@ -1,8 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { FAMILY_COOKIE, verifyAccessToken } from "@/lib/pin";
 
 // Next.js 16: `middleware` → `proxy` (nodejs 런타임). 세션 갱신 + 비로그인 보호.
-const PUBLIC_PATHS = ["/login", "/auth/callback"];
+const PUBLIC_PATHS = ["/login", "/enter", "/auth/callback", "/api/pin"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -38,15 +39,18 @@ export async function proxy(request: NextRequest) {
     (p) => pathname === p || pathname.startsWith(p + "/"),
   );
 
-  // 비로그인 + 보호 경로 → /login
-  if (!user && !isPublic) {
+  // 가족 공용 PIN 쿠키 보유 시에도 접근 허용(읽기 전용)
+  const hasPin = verifyAccessToken(request.cookies.get(FAMILY_COOKIE)?.value);
+
+  // (비로그인 && PIN 없음) + 보호 경로 → /login
+  if (!user && !hasPin && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  // 로그인 상태로 /login 접근 → 홈
-  if (user && pathname === "/login") {
+  // 이미 입장한 상태로 /login·/enter 접근 → 홈
+  if ((user || hasPin) && (pathname === "/login" || pathname === "/enter")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);

@@ -1,7 +1,13 @@
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
 
-export default function Header({ isAdmin }: { isAdmin: boolean }) {
+export default function Header({
+  isAdmin,
+  viewerKind = "member",
+}: {
+  isAdmin: boolean;
+  viewerKind?: "member" | "pin";
+}) {
   return (
     <header className="sticky top-0 z-10 flex items-center justify-between border-b border-neutral-200 bg-white/80 px-4 py-3 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/80">
       <Link href="/" className="text-lg font-semibold">
@@ -24,7 +30,7 @@ export default function Header({ isAdmin }: { isAdmin: boolean }) {
             </Link>
           </>
         )}
-        <SignOutButton />
+        <SignOutButton viewerKind={viewerKind} />
       </nav>
     </header>
   );

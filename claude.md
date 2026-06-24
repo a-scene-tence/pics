@@ -51,4 +51,11 @@ supabase/schema.sql                    테이블 + RLS 정책
 - (2026-06-24) **server-only 미설치**: `import "server-only"` 빌드 실패 → `npm i server-only`로 해결.
 - (2026-06-24) **next/font/google 빌드 의존**: 기본 스캐폴드의 Geist 폰트는 빌드 시 네트워크 fetch → 오프라인/제한망에서 실패 가능. 시스템 폰트로 교체함.
 - (2026-06-24) **빌드 검증 통과**: `npm run build` + `eslint .` 클린. proxy.ts가 "Proxy (Middleware)"로 정상 인식됨.
+- (2026-06-24) **react-hooks/set-state-in-effect**: `useEffect` 본문에서 동기 `setState` 호출 시 ESLint 에러(React 신규 규칙). 해결: 동기 분기의 setState를 `setTimeout(...,0)` 등으로 다음 틱에 호출(InstallPrompt iOS 분기).
 - (실제 발생 시 여기에 계속 추가)
+
+## 7. 로그인/접근 방식 (Phase 2)
+- **장기 세션**: `@supabase/ssr` 쿠키 maxAge=400일 + refresh token 무기한. → 기기당 1회 로그인으로 장기 유지. **Supabase에서 session time-box를 켜지 말 것**(기본 꺼짐).
+- **카카오/구글 OAuth**: `signInWithOAuth({provider, options:{redirectTo:.../auth/callback}})`. 콜백은 매직링크와 동일한 `exchangeCodeForSession` 재사용. 카카오는 **이메일 제공 동의 scope** 필요(allow-list 매칭).
+- **가족 공용 PIN(읽기 전용)**: `FAMILY_PIN`+`PIN_COOKIE_SECRET` 둘 다 설정 시에만 활성. HMAC 서명 httpOnly 쿠키(`family_access`). 읽기 경로는 `getViewer()`로 멤버/PIN 모두 허용하되, **PIN 뷰어는 RLS 컨텍스트가 없어 service role(`createAdminClient`)로 읽기 전용 조회**. 쓰기(업로드/삭제/초대)는 항상 `requireAdmin`(Supabase 멤버)만.
+  - ⚠️ **보안 트레이드오프**: 공용 PIN은 PIN+URL을 아는 누구나 전체 열람 가능 → 개별 프라이버시 약화. 완화: opt-in(미설정 시 비활성), 강한 PIN, 서명 쿠키, 실패 지연, 읽기 전용.

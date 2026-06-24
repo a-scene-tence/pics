@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { getSessionMember } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/auth";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { MediaItem } from "@/lib/types";
 import MediaActions from "@/components/MediaActions";
 
@@ -18,12 +18,12 @@ export default async function MediaPage({
 }: {
   params: Promise<{ id: string }>; // Next.js 16: params는 Promise
 }) {
-  const session = await getSessionMember();
-  if (!session) redirect("/login");
-  if (!session.member) redirect("/");
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
 
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase =
+    viewer.kind === "pin" ? createAdminClient() : await createClient();
   const { data } = await supabase
     .from("media")
     .select("*")
@@ -33,7 +33,7 @@ export default async function MediaPage({
   const media = data as MediaItem | null;
   if (!media) notFound();
 
-  const isAdmin = session.member.role === "admin";
+  const isAdmin = viewer.kind === "member" && viewer.role === "admin";
   const src = `/api/media/${media.id}`;
 
   return (

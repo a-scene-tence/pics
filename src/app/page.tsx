@@ -1,33 +1,40 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import Header from "@/components/Header";
-import { getSessionMember } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import InstallPrompt from "@/components/InstallPrompt";
+import { getViewer, getSessionMember } from "@/lib/auth";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { MediaItem } from "@/lib/types";
 
 // 인증/RLS에 의존하므로 항상 동적 렌더링
 export const dynamic = "force-dynamic";
 
 export default async function GalleryPage() {
-  const session = await getSessionMember();
-  if (!session) redirect("/login");
+  const viewer = await getViewer();
 
-  // 멤버가 아니면(초대 안 됨) 안내
-  if (!session.member) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center p-6 text-center">
-        <div>
-          <h1 className="text-xl font-semibold">접근 권한이 없습니다</h1>
-          <p className="mt-2 text-neutral-500">
-            {session.email} 은(는) 아직 초대되지 않았습니다. 관리자에게
-            문의하세요.
-          </p>
-        </div>
-      </main>
-    );
+  // 로그인도 PIN도 없으면 로그인으로
+  if (!viewer) {
+    // 로그인은 했지만 멤버가 아닌 경우 안내, 그 외는 /login
+    const session = await getSessionMember();
+    if (session && !session.member) {
+      return (
+        <main className="flex min-h-dvh items-center justify-center p-6 text-center">
+          <div>
+            <h1 className="text-xl font-semibold">접근 권한이 없습니다</h1>
+            <p className="mt-2 text-neutral-500">
+              {session.email} 은(는) 아직 초대되지 않았습니다. 관리자에게
+              문의하세요.
+            </p>
+          </div>
+        </main>
+      );
+    }
+    redirect("/login");
   }
 
-  const supabase = await createClient();
+  // PIN 뷰어는 RLS 컨텍스트가 없으므로 service role로 읽기 전용 조회.
+  const supabase =
+    viewer.kind === "pin" ? createAdminClient() : await createClient();
   const { data } = await supabase
     .from("media")
     .select("*")
@@ -36,12 +43,13 @@ export default async function GalleryPage() {
     .limit(200);
 
   const media = (data as MediaItem[] | null) ?? [];
-  const isAdmin = session.member.role === "admin";
+  const isAdmin = viewer.kind === "member" && viewer.role === "admin";
 
   return (
     <>
-      <Header isAdmin={isAdmin} />
+      <Header isAdmin={isAdmin} viewerKind={viewer.kind} />
       <main className="mx-auto w-full max-w-6xl flex-1 p-4">
+        <InstallPrompt />
         {media.length === 0 ? (
           <div className="flex min-h-[60dvh] flex-col items-center justify-center text-center text-neutral-500">
             <p className="text-lg">아직 사진이 없어요</p>

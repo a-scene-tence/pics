@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireMember, requireAdmin } from "@/lib/auth";
+import { getViewer, requireAdmin } from "@/lib/auth";
 import { presignGet, deleteObject } from "@/lib/r2";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -12,14 +12,15 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }, // Next.js 16: params는 Promise
 ) {
-  const member = await requireMember();
-  if (!member)
+  const viewer = await getViewer();
+  if (!viewer)
     return NextResponse.json({ error: "접근 권한이 없습니다." }, { status: 403 });
 
   const { id } = await params;
-  const supabase = await createClient();
+  // PIN 뷰어는 RLS 컨텍스트가 없으므로 service role로 읽기 전용 조회.
+  const supabase =
+    viewer.kind === "pin" ? createAdminClient() : await createClient();
 
-  // RLS(media_select)로 멤버만 조회 가능
   const { data: media, error } = await supabase
     .from("media")
     .select("r2_key, thumb_key, original_name")
